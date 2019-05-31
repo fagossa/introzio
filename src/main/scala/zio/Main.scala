@@ -1,11 +1,11 @@
-package example
+package zio
 
 import scalaz.zio._
 import scalaz.zio.console._
 
 object Main extends App {
 
-  import example.service.LogService._
+  import zio.service.LogService._
 
   def run(args: List[String]): ZIO[Console, Nothing, Int] =
     myAppLogic.fold(_ => 1, _ => 0)

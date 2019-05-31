@@ -1,4 +1,4 @@
-package example
+package zio
 
 import org.scalatest._
 import domain._

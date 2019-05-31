@@ -1,16 +1,16 @@
-package example.service
+package zio.service
 
 import scala.io.BufferedSource
 import java.io.{File, PrintWriter}
 
-import domain.Log
+import zio.domain.Log
 import scalaz.zio.{IO, Task, ZIO}
 
 case class FileContent(fileName: String, contents: String)
 case class LogWithName(fileName: String, log: Log)
 
 object LogService {
-  import domain._
+  import zio.domain._
 
   def close(s: BufferedSource): ZIO[Any, Nothing, Unit] =
     Task.effect(s.close()).catchAll(_ => IO.unit)
