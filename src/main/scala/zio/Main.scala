@@ -2,25 +2,24 @@ package zio
 
 import scalaz.zio._
 import scalaz.zio.console._
+import zio.service.{FileService, LogService}
 
 object Main extends App {
-
-  import zio.service.LogService._
 
   def run(args: List[String]): ZIO[Console, Nothing, Int] =
     myAppLogic.fold(_ => 1, _ => 0)
 
-  private val originName = "/Users/myuser/Documents/messages/xml"
-  private val destinationName = "/Users/myuser/Documents/messages/csv"
+  private val originFolder = "/Users/myuser/Documents/messages/xml"
+  private val destinationFolder = "/Users/myuser/Documents/messages/csv"
 
   val myAppLogic =
     for {
-      files       <- getListOfFiles(originName, ".xml")
+      files       <- FileService.listOfFiles(originFolder, _.getName.endsWith(".xml"))
       _           <- putStrLn(s"Got these raw files: $files")
-      contents    <- ZIO.foreach(files.map(readFileContents)) { identity }
-      allLogs     <- ZIO.foreach(contents.map(transformToMessage)) { identity }
+      contents    <- ZIO.foreach(files.map(LogService.readFileContents)) { identity }
+      allLogs     <- ZIO.foreach(contents.map(LogService.transformToMessage)) { identity }
       correctLogs = allLogs.collect { case Some(i) => i }
-      _           <- ZIO.foreach(correctLogs)(writeLogToFile(destinationName))
+      _           <- ZIO.foreach(correctLogs)(LogService.writeLogToFile(destinationFolder))
     } yield ()
 
 }

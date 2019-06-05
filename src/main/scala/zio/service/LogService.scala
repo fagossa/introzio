@@ -1,27 +1,24 @@
 package zio.service
 
-import scala.io.BufferedSource
-import java.io.{File, PrintWriter}
+import java.io.File
 
 import zio.domain.Log
-import scalaz.zio.{IO, Task, ZIO}
+import scalaz.zio.{Task, ZIO}
 
 case class FileContent(fileName: String, contents: String)
+
 case class LogWithName(fileName: String, log: Log)
 
-object LogService {
+object LogService extends IOResources {
+
   import zio.domain._
-
-  def close(s: BufferedSource): ZIO[Any, Nothing, Unit] =
-    Task.effect(s.close()).catchAll(_ => IO.unit)
-
-  def close(s: PrintWriter): ZIO[Any, Nothing, Unit] =
-    Task.effect(s.close()).catchAll(_ => IO.unit)
 
   def readFileContents(file: File): Task[FileContent] = {
     import scala.io.Source
     // We use brackets to close resources
-    Task.effect(Source.fromFile(file)(scala.io.Codec.UTF8)).bracket { close } { source =>
+    Task.effect(Source.fromFile(file)(scala.io.Codec.UTF8)).bracket {
+      close
+    } { source =>
       Task.effect(source.getLines().mkString("\n")).map {
         content => FileContent(file.getName, content)
       }
@@ -34,7 +31,7 @@ object LogService {
     import scala.xml.XML
     for {
       // handle event that can launch exceptions
-      xml      <- Task.effect(XML.loadString(contents.contents))
+      xml <- Task.effect(XML.loadString(contents.contents))
       // handle event that DOES NOT launch exceptions
       maybeLog <- Task.effectTotal(XmlReader.of[Log].read(xml).toOption)
       response <- Task.effectTotal(maybeLog.map(LogWithName(contents.fileName, _)))
@@ -43,27 +40,18 @@ object LogService {
 
   def writeLogToFile(dest: String)(log: LogWithName): Task[Unit] = {
     import java.io._
-    val toLine: Message => String = message =>
-      s"${message.from.user.friendlyName.replaceAll(",", ".")},${message.to.user.friendlyName.replaceAll(",", ".")},${message.text.value.replaceAll(",", ".")}"
+    val file = new File(s"$dest/${log.fileName.replaceAll(".xml", "")}.csv")
     for {
-      _  <- Task.effect(new PrintWriter(new File(s"$dest/${log.fileName.replaceAll(".xml", "")}.csv" ))).bracket { close } { writer =>
+      _ <- Task.effect(new PrintWriter(file)).bracket {
+        close
+      } { writer =>
         for {
           _ <- Task.effect(writer.write("from, to, text\n"))
-          _ <- ZIO.foreach(log.log.messages) { message => Task.effect(writer.write(s"${toLine(message)}\n")) }
-        } yield()
+          // Same as Traverse[T]
+          _ <- ZIO.foreach(log.log.messages) { message => Task.effect(writer.write(s"${Message.toLine(message)}\n")) }
+        } yield ()
       }
     } yield ()
   }
 
-  def getListOfFiles(dir: String, extension: String): Task[List[File]] = {
-    (for {
-      d     <- Task.effect(new File(dir))
-      files <- Task.effect(
-                d.listFiles //TODO: can we handle this filter -> if d.exists && d.isDirectory
-                .filter(_.isFile)
-                .filter(_.getName.endsWith(extension))
-              )
-    } yield files.toList)
-      .orElse(ZIO.succeed(List[File]()))
-  }
 }

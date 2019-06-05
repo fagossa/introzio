@@ -28,6 +28,9 @@ object Text {
 case class Message(from: From, to: To, text: Text)
 
 object Message {
+    def toLine(message: Message) =
+        s"${message.from.user.friendlyName.replaceAll(",", ".")},${message.to.user.friendlyName.replaceAll(",", ".")},${message.text.value.replaceAll(",", ".")}"
+
     implicit val reader: XmlReader[Message] = (
         (__ \ "From").read[From],
         (__ \ "To").read[To],
