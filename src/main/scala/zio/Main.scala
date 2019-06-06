@@ -15,11 +15,12 @@ object Main extends App {
   val myAppLogic =
     for {
       files       <- FileService.listOfFiles(originFolder, _.getName.endsWith(".xml"))
-      _           <- putStrLn(s"Got these raw files: $files")
+      _           <- putStrLn(s"Got <${files.size}> raw files")
       contents    <- ZIO.foreach(files.map(LogService.readFileContents)) { identity }
       allLogs     <- ZIO.foreach(contents.map(LogService.transformToMessage)) { identity }
       correctLogs = allLogs.collect { case Some(i) => i }
-      _           <- ZIO.foreach(correctLogs)(LogService.writeLogToFile(destinationFolder))
+      results     <- ZIO.foreach(correctLogs)(LogService.writeLogToFile(destinationFolder))
+      _           <- ZIO.foreach(results){ result => putStrLn(s"Result <$result>") }
     } yield ()
 
 }
