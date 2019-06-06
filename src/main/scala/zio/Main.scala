@@ -20,7 +20,7 @@ object Main extends App {
       allLogs     <- ZIO.foreach(contents.map(LogService.transformToMessage)) { identity }
       correctLogs = allLogs.collect { case Some(i) => i }
       results     <- ZIO.foreach(correctLogs)(LogService.writeLogToFile(destinationFolder))
-      _           <- ZIO.foreach(results){ result => putStrLn(s"Result <$result>") }
+      _           <- ZIO.foreach(results){result => putStrLn(s"Result <$result>")}
     } yield ()
 
 }

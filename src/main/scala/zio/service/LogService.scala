@@ -2,12 +2,7 @@ package zio.service
 
 import java.io.File
 
-import zio.domain.Log
 import scalaz.zio.{Task, ZIO}
-
-case class FileContent(fileName: String, contents: String)
-
-case class LogWithName(fileName: String, log: Log)
 
 object LogService extends IOResources {
 
@@ -36,8 +31,8 @@ object LogService extends IOResources {
     } yield response
   }
 
-  def writeLogToFile(dest: String)(log: LogWithName): Task[Receipt] = {
-    // val t: Task[Unit] = blocking.effectBlocking(())
+  // val t: Task[Unit] = blocking.effectBlocking(())
+  def writeLogToFile(dest: String)(log: LogWithName): Task[Result] = {
     import java.io._
     val file = new File(s"$dest/${log.fileName.replaceAll(".xml", "")}.csv")
     for {
@@ -49,26 +44,12 @@ object LogService extends IOResources {
           receipts <- ZIO.foreach(log.log.messages) { message =>
                         // Transform each individual message into a Receipt
                         Task.effect(writer.write(s"${Message.toLine(message)}\n"))
-                          .fold(t => Receipt.failure(log.fileName, t), _ => Receipt.success(log.fileName))
+                          .fold(t => Result.failure(log.fileName, t), _ => Result.success(log.fileName))
                      }
         } yield receipts
       }
-    } yield receipts.foldLeft(Receipt.empty){ _ |+| _ }
+    } yield receipts.foldLeft(Result.empty){ _ |+| _ }
   }
 
-}
-
-case class Receipt(value: Map[String, Option[Throwable]]) { self =>
-  final def |+|(that: Receipt): Receipt =
-    Receipt(self.value ++ that.value)
-
-  final def succeeded: Int = value.values.count(_.isEmpty)
-  final def failures: List[Throwable] = value.values.collect { case Some(t) => t}.toList
-
-}
-object Receipt {
-  def empty: Receipt = Receipt(Map.empty)
-  def success(fileName: String): Receipt = Receipt(Map(fileName -> None))
-  def failure(fileName: String, t: Throwable): Receipt = Receipt(Map(fileName -> Some(t)))
 }
 

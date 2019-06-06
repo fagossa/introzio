@@ -5,6 +5,10 @@ import com.lucidchart.open.xtract.{XmlReader, __}
 import play.api.libs.functional.syntax._
 import cats.syntax.all._
 
+case class FileContent(fileName: String, contents: String)
+
+case class LogWithName(fileName: String, log: Log)
+
 case class User(friendlyName: String)
 object User {
     implicit val reader: XmlReader[User] = attribute[String]("FriendlyName").map(apply)
