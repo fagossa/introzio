@@ -4,6 +4,10 @@ import java.io.File
 
 import scalaz.zio.{Task, ZIO}
 
+/**
+  * For blocking events see:
+  *  {{{ val t: Task[Unit] = blocking.effectBlocking(???) }}}
+  */
 object LogService extends IOResources {
 
   import zio.domain._
@@ -11,7 +15,7 @@ object LogService extends IOResources {
   def readFileContents(file: File): Task[FileContent] = {
     import scala.io.Source
     // We use brackets to close resources
-    Task(Source.fromFile(file)(scala.io.Codec.UTF8)).bracket(close){ source =>
+    Task(Source.fromFile(file)(scala.io.Codec.UTF8)).bracket(closeSource){ source =>
       Task(source.getLines().mkString("\n"))
         .map { content => FileContent(file.getName, content)
       }
@@ -31,19 +35,18 @@ object LogService extends IOResources {
     } yield response
   }
 
-  // val t: Task[Unit] = blocking.effectBlocking(())
   def writeLogToFile(dest: String)(log: LogWithName): Task[Result] = {
     import java.io._
-    val file = new File(s"$dest/${log.fileName.replaceAll(".xml", "")}.csv")
     for {
-      receipts <- Task(new PrintWriter(file)).bracket(close){ writer =>
+      file      <- Task(new File(s"$dest/${log.fileName.replaceAll(".xml", "")}.csv"))
+      receipts  <- Task(new PrintWriter(file)).bracket(closeWriter){ writer =>
         for {
           _        <- Task(writer.write("from, to, text\n"))
           // Same as Traverse[T]
           // Max 10 threads: ZIO.foreachParN(10)(log.log.messages)
           receipts <- ZIO.foreach(log.log.messages) { message =>
-                        // Transform each individual message into a Receipt
-                        Task.effect(writer.write(s"${Message.toLine(message)}\n"))
+                        // Transform each individual message into a Result()
+                        Task(writer.write(s"${Message.toLine(message)}\n"))
                           .fold(t => Result.failure(log.fileName, t), _ => Result.success(log.fileName))
                      }
         } yield receipts

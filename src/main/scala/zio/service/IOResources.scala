@@ -8,10 +8,10 @@ import scala.io.BufferedSource
 
 trait IOResources {
 
-  def close(s: BufferedSource): ZIO[Any, Nothing, Unit] =
+  def closeSource(s: BufferedSource): ZIO[Any, Nothing, Unit] =
     Task.effect(s.close()).catchAll(_ => IO.unit)
 
-  def close(s: PrintWriter): ZIO[Any, Nothing, Unit] =
+  def closeWriter(s: PrintWriter): ZIO[Any, Nothing, Unit] =
     Task.effect(s.close()).catchAll(_ => IO.unit)
 
 }
